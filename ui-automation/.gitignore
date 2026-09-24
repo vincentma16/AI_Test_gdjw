@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Secrets
+.env
+
+# 登录态缓存（含 token/cookie，禁止提交）
+reports/.auth_state.json
+
+# Allure 报告产物
+reports/allure-results/
+reports/allure-report/
+
+# Playwright
+test-results/
+playwright-report/
+
+# 日志
+logs/
+*.log
+
+# IDE
+.idea/
+.vscode/

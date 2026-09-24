@@ -1,0 +1,332 @@
+# 登录（验证码）接口测试数据
+# 接口: POST /auth/account/signInByVerifyCode
+# 环境: dev (https://dev.example.com)
+#
+# 字段说明:
+#   severity : blocker | critical | normal | minor  (映射 Allure 严重级别)
+#   reason   : 排查理由 —— 本场景要验证什么、为什么重要
+#   note     : 可选，备注/风险提示，会附到 Allure 报告
+#   request  : 请求体（缺失字段=不传该字段；null=显式传null；数字=数字类型）
+#   expect   : 期望。jsonpath 断言相等；jsonpath_exists 断言存在且非空
+
+cases:
+  # ============ 正向场景 ============
+  - name: "正确验证码登录成功"
+    id: LOGIN-API-001
+    feature: 登录
+    story: 正向-成功
+    severity: blocker
+    reason: "基线正向用例：验证合法入参能成功登录并返回有效token"
+    request:
+      mobile: "${TEST_MOBILE}"
+      verifyCode: "111111"
+      clientId: "${TEST_CLIENT_ID}"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": 0
+        "$.message": "success"
+      jsonpath_exists:
+        - "$.result.access_token"
+        - "$.result.user_id"
+        - "$.result.refresh_token"
+
+  - name: "多传未知字段仍登录成功"
+    id: LOGIN-API-002
+    feature: 登录
+    story: 正向-容错
+    severity: minor
+    reason: "容错性：请求体多传服务端未定义的字段，不应影响登录"
+    request:
+      mobile: "${TEST_MOBILE}"
+      verifyCode: "111111"
+      clientId: "${TEST_CLIENT_ID}"
+      extra: "hack"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": 0
+        "$.message": "success"
+      jsonpath_exists:
+        - "$.result.access_token"
+
+  - name: "手机号为数字类型仍登录成功"
+    id: LOGIN-API-003
+    feature: 登录
+    story: 正向-类型容错
+    severity: minor
+    reason: "类型容错：mobile 传数字类型(非字符串)，后端应能自动转换并正常登录"
+    request:
+      mobile: 13000000000
+      verifyCode: "111111"
+      clientId: "${TEST_CLIENT_ID}"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": 0
+        "$.message": "success"
+      jsonpath_exists:
+        - "$.result.access_token"
+
+  # ============ 验证码异常场景 ============
+  - name: "错误验证码登录失败"
+    id: LOGIN-API-004
+    feature: 登录
+    story: 验证码异常-错误码
+    severity: normal
+    reason: "验证码校验：传入不匹配的验证码应被拒绝"
+    request:
+      mobile: "${TEST_MOBILE}"
+      verifyCode: "000000"
+      clientId: "${TEST_CLIENT_ID}"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": -100
+        "$.message": "验证码有误"
+
+  - name: "空验证码登录失败"
+    id: LOGIN-API-005
+    feature: 登录
+    story: 验证码异常-空值
+    severity: normal
+    reason: "排查点：空字符串 verifyCode='' 与字段缺失行为是否一致（实测走'验证码有误'而非'不可为空'）"
+    note: "实测空串返回'验证码有误'，与缺失字段返回'verifyCode 不可以为空'不同——空串未触发非空校验，直接进入验证码比对"
+    request:
+      mobile: "${TEST_MOBILE}"
+      verifyCode: ""
+      clientId: "${TEST_CLIENT_ID}"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": -100
+        "$.message": "验证码有误"
+
+  - name: "缺失verifyCode字段登录失败"
+    id: LOGIN-API-006
+    feature: 登录
+    story: 验证码异常-缺失字段
+    severity: normal
+    reason: "必填校验：不传 verifyCode 字段应提示不可为空"
+    request:
+      mobile: "${TEST_MOBILE}"
+      clientId: "${TEST_CLIENT_ID}"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": -100
+        "$.message": "verifyCode 不可以为空"
+
+  - name: "verifyCode为null登录失败"
+    id: LOGIN-API-007
+    feature: 登录
+    story: 验证码异常-null
+    severity: normal
+    reason: "排查点：显式传 null 是否等同字段缺失（实测等同，提示'不可为空'）"
+    request:
+      mobile: "${TEST_MOBILE}"
+      verifyCode: null
+      clientId: "${TEST_CLIENT_ID}"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": -100
+        "$.message": "verifyCode 不可以为空"
+
+  - name: "验证码超长登录失败"
+    id: LOGIN-API-008
+    feature: 登录
+    story: 验证码异常-超长
+    severity: minor
+    reason: "边界值：验证码长度远超6位，应被当作错误验证码拒绝"
+    request:
+      mobile: "${TEST_MOBILE}"
+      verifyCode: "11111111111111111111"
+      clientId: "${TEST_CLIENT_ID}"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": -100
+        "$.message": "验证码有误"
+
+  - name: "验证码带前后空格登录失败"
+    id: LOGIN-API-009
+    feature: 登录
+    story: 验证码异常-空格
+    severity: minor
+    reason: "排查点：正确验证码带前后空格是否被trim后接受（实测未trim，直接拒绝）"
+    note: "实测 ' 111111 ' 返回'验证码有误'，后端未对验证码做 trim 处理——前端若误带空格会导致用户无法登录"
+    request:
+      mobile: "${TEST_MOBILE}"
+      verifyCode: " 111111 "
+      clientId: "${TEST_CLIENT_ID}"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": -100
+        "$.message": "验证码有误"
+
+  # ============ 手机号异常场景 ============
+  - name: "空手机号登录失败"
+    id: LOGIN-API-010
+    feature: 登录
+    story: 手机号异常-空值
+    severity: normal
+    reason: "排查点：空字符串 mobile='' 走格式校验还是非空校验（实测走'手机号格式错误'）"
+    request:
+      mobile: ""
+      verifyCode: "111111"
+      clientId: "${TEST_CLIENT_ID}"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": -100
+        "$.message": "手机号格式错误"
+
+  - name: "缺失mobile字段登录失败"
+    id: LOGIN-API-011
+    feature: 登录
+    story: 手机号异常-缺失字段
+    severity: normal
+    reason: "必填校验：不传 mobile 字段应提示不可为空"
+    request:
+      verifyCode: "111111"
+      clientId: "${TEST_CLIENT_ID}"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": -100
+        "$.message": "mobile 不可以为空"
+
+  - name: "手机号过短登录失败"
+    id: LOGIN-API-012
+    feature: 登录
+    story: 手机号异常-格式
+    severity: normal
+    reason: "格式校验：非11位手机号应被拒绝"
+    request:
+      mobile: "123"
+      verifyCode: "111111"
+      clientId: "${TEST_CLIENT_ID}"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": -100
+        "$.message": "手机号格式错误"
+
+  - name: "手机号含字母登录失败"
+    id: LOGIN-API-013
+    feature: 登录
+    story: 手机号异常-格式
+    severity: normal
+    reason: "格式校验：手机号含非数字字符应被拒绝"
+    request:
+      mobile: "1300000000a"
+      verifyCode: "111111"
+      clientId: "${TEST_CLIENT_ID}"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": -100
+        "$.message": "手机号格式错误"
+
+  - name: "手机号含空格登录失败"
+    id: LOGIN-API-014
+    feature: 登录
+    story: 手机号异常-格式
+    severity: normal
+    reason: "格式校验：手机号含空格应被拒绝"
+    request:
+      mobile: "130 0000 0000"
+      verifyCode: "111111"
+      clientId: "${TEST_CLIENT_ID}"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": -100
+        "$.message": "手机号格式错误"
+
+  # ============ clientId 异常场景 ============
+  - name: "缺失clientId字段登录失败"
+    id: LOGIN-API-015
+    feature: 登录
+    story: clientId异常-缺失字段
+    severity: normal
+    reason: "必填校验：不传 clientId 字段应提示不可为空"
+    request:
+      mobile: "${TEST_MOBILE}"
+      verifyCode: "111111"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": -100
+        "$.message": "clientId 不可以为空"
+
+  - name: "空clientId返回成功但token为空"
+    id: LOGIN-API-016
+    feature: 登录
+    story: clientId异常-空值
+    severity: critical
+    reason: "🔴潜在缺陷排查：clientId='' 时空串绕过非空校验返回 code=0 成功，但 access_token 为空串——业务判定成功却拿到无效token"
+    note: "风险：空clientId返回成功(code=0)但token为空。下游接口用空token调用会静默失败，难以定位。建议：空clientId应同缺失字段一样返回错误。"
+    request:
+      mobile: "${TEST_MOBILE}"
+      verifyCode: "111111"
+      clientId: ""
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": 0
+        "$.message": "success"
+        "$.result.access_token": ""
+
+  - name: "错误clientId返回成功但token为空"
+    id: LOGIN-API-017
+    feature: 登录
+    story: clientId异常-错误值
+    severity: critical
+    reason: "🔴潜在缺陷排查：传入不存在的clientId仍返回 code=0 成功，但 access_token 为空串——校验逻辑疑似只判空未判有效性"
+    note: "风险：任意非空clientId都返回成功但token空。与空clientId缺陷同源，建议统一校验clientId有效性。"
+    request:
+      mobile: "${TEST_MOBILE}"
+      verifyCode: "111111"
+      clientId: "00000000000000000000000000000000"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": 0
+        "$.message": "success"
+        "$.result.access_token": ""
+
+  # ============ 请求体异常场景 ============
+  - name: "空请求体登录失败"
+    id: LOGIN-API-018
+    feature: 登录
+    story: 请求体异常-空对象
+    severity: normal
+    reason: "排查点：请求体为空对象{}时所有必填字段都缺失，应返回某个字段的不可为空错误（实测校验顺序非确定，mobile/clientId 哪个先报不一定）"
+    request: {}
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": -100
+      contains:
+        - "不可以为空"
+
+  # ============ 安全场景 ============
+  - name: "验证码SQL注入被拒绝"
+    id: LOGIN-API-019
+    feature: 登录
+    story: 安全-注入防护
+    severity: normal
+    reason: "安全排查：验证码字段注入SQL片段，应被当作普通错误验证码拒绝，不应产生异常或泄露信息"
+    note: "实测注入串返回'验证码有误'，未触发500或异常堆栈，注入防护OK"
+    request:
+      mobile: "${TEST_MOBILE}"
+      verifyCode: "' OR 1=1 --"
+      clientId: "${TEST_CLIENT_ID}"
+    expect:
+      status_code: 200
+      jsonpath:
+        "$.code": -100
+        "$.message": "验证码有误"

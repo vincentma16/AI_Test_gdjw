@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "test-design.schema.json",
+  "title": "测试设计文档",
+  "description": "校验测试设计记录 front matter / 机器中间表示。Markdown 正文使用中文,本 schema 使用英文枚举,中英文映射见 test-asset-format §中英文状态映射和 §覆盖矩阵状态。字段语义以 functional-test-design 和 test-asset-format 为准。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "feature",
+    "status",
+    "source_review",
+    "platforms",
+    "scope",
+    "test_data",
+    "test_points",
+    "test_cases",
+    "acceptance_coverage",
+    "risk_coverage",
+    "deferred_items"
+  ],
+  "properties": {
+    "feature": {
+      "type": "string",
+      "minLength": 1,
+      "description": "功能标识"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "approved"],
+      "description": "对应中文:草稿/已批准"
+    },
+    "source_review": {
+      "type": "string",
+      "minLength": 1,
+      "description": "关联的评审文件相对路径,如 ../02-analysis/requirement-review.md"
+    },
+    "platforms": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["web", "wechat-miniapp", "mobile-app", "desktop", "api"]
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["included", "excluded", "assumptions"],
+      "properties": {
+        "included": { "$ref": "#/$defs/stringList" },
+        "excluded": { "$ref": "#/$defs/stringList" },
+        "assumptions": { "$ref": "#/$defs/stringList" }
+      }
+    },
+    "test_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "description"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^D-[0-9]{3}$" },
+          "description": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "test_points": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "test_cases": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/testCase" }
+    },
+    "acceptance_coverage": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/coverageEntry" }
+    },
+    "risk_coverage": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/coverageEntry" }
+    },
+    "deferred_items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/deferredItem" }
+    }
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "testCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "preconditions", "steps", "expected_results", "priority", "traceability"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)+-[0-9]{3}$"
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "preconditions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "expected_results": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["P0", "P1", "P2", "P3"]
+        },
+        "type": { "type": "string" },
+        "technique": { "type": "string" },
+        "traceability": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(AC|Q|R|A)-[0-9]{3}$"
+          }
+        }
+      }
+    },
+    "coverageEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_id", "covered_by", "status"],
+      "properties": {
+        "target_id": {
+          "type": "string",
+          "pattern": "^(AC|R)-[0-9]{3}$",
+          "description": "验收条件 ID 或风险 ID"
+        },
+        "covered_by": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)+-[0-9]{3}$" }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["covered", "partial", "pending-confirmation", "uncovered"],
+          "description": "对应中文:已覆盖/部分覆盖/待确认后覆盖/未覆盖;映射见 test-asset-format §覆盖矩阵状态"
+        },
+        "note": {
+          "type": "string",
+          "description": "状态为 uncovered 时必须填写暂缓说明和关联问题 ID"
+        }
+      }
+    },
+    "deferredItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question_ref", "reason", "affected_scope"],
+      "properties": {
+        "question_ref": {
+          "type": "string",
+          "pattern": "^Q-[0-9]{3}$",
+          "description": "暂缓项必须关联未关闭问题 ID"
+        },
+        "reason": { "type": "string", "minLength": 1 },
+        "affected_scope": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

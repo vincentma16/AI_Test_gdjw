@@ -1,0 +1,37 @@
+# 登录测试数据
+# ------------------------------------------------------------------
+# 约定：所有输入值、预期断言值（URL片段/token key/超时）均在此维护，
+#       用例只读取并调用 Page Object，不在代码中硬编码任何业务数据。
+# 真实登录账号走 .env 环境变量（TEST_PHONE / TEST_CODE），不在此文件。
+
+# 真实登录预期配置（test_real_login 读取）
+real_login:
+  feature: 登录
+  story: 验证码授权登录
+  title: LOGIN-UI-001 验证码授权登录-进入工作台
+  expect:
+    url_contains: "/web/"              # 登录成功后期望URL包含的片段
+    token_key: "app_access_token"      # localStorage 中 token 的 key
+    login_timeout: 30000                # 登录成功等待超时(ms)
+
+# 本地 fixture 用例（框架自验证，不依赖外部系统）
+cases:
+  - id: LOGIN-UI-002
+    name: 验证码登录-正向
+    feature: 登录
+    story: 验证码登录
+    request:
+      phone: "13800138000"
+      code: "888888"
+    expect:
+      success_text: "登录成功"
+
+  - id: LOGIN-UI-003
+    name: 登录-手机号为空校验
+    feature: 登录
+    story: 表单校验
+    request:
+      phone: ""
+      code: "888888"
+    expect:
+      error_text: "请填写手机号和验证码"

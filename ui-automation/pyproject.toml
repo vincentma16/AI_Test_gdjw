@@ -1,0 +1,20 @@
+[project]
+name = "ui-automation"
+version = "0.1.0"
+description = "UI 自动化测试框架（Playwright + pytest + Allure）"
+requires-python = ">=3.9"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["testcases"]
+pythonpath = ["."]
+addopts = "-v --alluredir=./reports/allure-results --clean-alluredir"
+markers = [
+    "smoke: 冒烟用例",
+    "login: 登录相关",
+    "regression: 回归用例"
+]
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"

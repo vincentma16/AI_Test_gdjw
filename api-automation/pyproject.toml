@@ -1,0 +1,25 @@
+[project]
+name = "api-automation"
+version = "0.1.0"
+description = "接口自动化测试框架（pytest + requests + Allure）"
+requires-python = ">=3.9"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["testcases"]
+# pythonpath 确保项目根在 sys.path，使 apis/ common/ 包可被用例导入
+pythonpath = ["."]
+# --import-mode=importlib：按完整路径生成唯一模块名，支持模块化目录下同名 test 文件
+# （testcases/login/test_login.py 与 testcases/client/test_client.py 互不冲突）
+addopts = "-v --import-mode=importlib --alluredir=./reports/allure-results --clean-alluredir"
+markers = [
+    "smoke: 冒烟用例",
+    "login: 登录相关",
+    "auth: 鉴权相关",
+    "regression: 回归用例",
+    "security: 安全相关"
+]
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"

@@ -1,0 +1,71 @@
+# 多环境配置（示例值，接入真实系统时替换为自己的环境地址）
+# base_url 为登录/鉴权域名；业务接口域名见 services（svc-main / svc-deal / svc-bill）
+# base_url 可被 .env 中 <ENV>_BASE_URL 覆盖
+defaults:
+  timeout: 15
+  retry: 0
+
+environments:
+  dev:
+    base_url: https://dev.example.com
+    timeout: 15
+    services:
+      svc-main: https://dev.example.com/svc-main
+      svc-deal: https://dev.example.com/svc-deal
+      svc-bill: https://dev.example.com/svc-bill
+  sit:
+    base_url: https://sit.example.com
+    timeout: 15
+    services:
+      svc-main: https://sit.example.com/svc-main
+      svc-deal: https://sit.example.com/svc-deal
+      svc-bill: https://sit.example.com/svc-bill
+  uat:
+    base_url: https://uat.example.com
+    timeout: 15
+    services:
+      svc-main: https://uat.example.com/svc-main
+      svc-deal: https://uat.example.com/svc-deal
+      svc-bill: https://uat.example.com/svc-bill
+  prod:
+    base_url: https://prod.example.com
+    timeout: 10
+    services:
+      svc-main: https://prod.example.com/svc-main
+      svc-deal: https://prod.example.com/svc-deal
+      svc-bill: https://prod.example.com/svc-bill
+
+# 鉴权配置：登录获取 token 并自动注入后续请求
+auth:
+  login_endpoint: /auth/account/signInByVerifyCode
+  token_jsonpath: "$.result.access_token"
+  # 敏感值用 ${VAR} 占位，真实值写在 .env（已被 .gitignore 忽略）。
+  # 参见 .env.example 中的 TEST_MOBILE / TEST_CODE / TEST_CLIENT_ID。
+  credentials:
+    mobile: "${TEST_MOBILE}"
+    verifyCode: "${TEST_CODE}"
+    clientId: "${TEST_CLIENT_ID}"
+  # 接口鉴权（accessToken 查询参数 + Authorization 头）
+  header:
+    name: Authorization
+    prefix: "Bearer "
+  query_param:
+    name: accessToken
+  # 业务接口（svc-main / svc-deal / svc-bill）多头鉴权
+  biz_headers:
+    - { name: Authorization, prefix: "Bearer " }
+    - { name: token }
+    - { name: access-token }
+    - { name: Business-Line, value: "DEFAULT" }
+  # 岗位信息：登录后调用此接口拿岗位，注入岗位头（业务接口权限校验需要）
+  staff_info:
+    service: svc-main
+    endpoint: /api/staff/info
+    method: GET
+    positions_jsonpath: "$.result.staffPositionList"
+    org_key: organizationDtoList
+    role_headers:
+      postcode: { field: postCode }
+      postName: { field: postName, encode: true }
+      orgCode: { field: orgCode }
+      orgName: { field: orgName, encode: true }

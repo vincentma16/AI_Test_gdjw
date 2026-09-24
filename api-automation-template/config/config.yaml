@@ -1,0 +1,51 @@
+# 多环境配置（模板占位，接入新项目时替换 TODO）
+# base_url 为登录/鉴权域名；业务接口域名见 services
+# base_url 可被 .env 中 <ENV>_BASE_URL 覆盖
+defaults:
+  timeout: 15
+  retry: 0
+
+environments:
+  sit:
+    base_url: https://TODO-sit.example.com   # TODO: 登录/鉴权域名
+    timeout: 15
+    services:
+      # TODO: 业务服务名与域名，供 apis 层 service_url("服务名") 使用
+      example-service: https://TODO-sit.example.com/example-service
+  prod:
+    base_url: https://TODO.example.com
+    timeout: 10
+    services:
+      example-service: https://TODO.example.com/example-service
+
+# 鉴权配置：登录获取 token 并按配置注入后续请求（common/auth 按此执行，不硬编码）
+auth:
+  login_endpoint: /TODO/login                 # TODO: 登录接口路径
+  token_jsonpath: "$.result.access_token"     # TODO: token 提取路径
+  credentials:
+    # TODO: 登录凭证（敏感账号建议放 .env，此处仅留结构）
+    mobile: "TODO"
+    verifyCode: "TODO"
+  # 单 token 鉴权（auth_api 句柄用）
+  header:
+    name: Authorization
+    prefix: "Bearer "
+  query_param:
+    name: accessToken
+  # 业务接口多头鉴权（biz_api 句柄用）
+  biz_headers:
+    - { name: Authorization, prefix: "Bearer " }
+    - { name: token }
+    - { name: Business-Line, value: "TODO" }
+  # 岗位信息：登录后拉取岗位注入岗位头（业务接口权限校验需要；若无需可删除本段）
+  staff_info:
+    service: example-service                  # TODO: 对应 services 中的服务名
+    endpoint: /api/staff/info                 # TODO: 岗位接口路径
+    method: GET
+    positions_jsonpath: "$.result.staffPositionList"
+    org_key: organizationDtoList
+    role_headers:
+      postcode: { field: postCode }
+      postName: { field: postName, encode: true }
+      orgCode: { field: orgCode }
+      orgName: { field: orgName, encode: true }
