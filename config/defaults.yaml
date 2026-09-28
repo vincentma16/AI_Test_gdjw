@@ -1,0 +1,30 @@
+version: 1
+
+assets:
+  language: zh-CN
+  format: markdown
+  human_approval_required: true
+
+identifiers:
+  acceptance_criterion: AC
+  question: Q
+  risk: R
+  assumption: A
+  test_data: D
+
+risk_levels:
+  - high
+  - medium
+  - low
+
+test_priorities:
+  - P0
+  - P1
+  - P2
+  - P3
+
+workflow:
+  preserve_raw_source: true
+  allow_unapproved_test_baseline: false
+  publish_external_assets: false
+  execute_tests: false

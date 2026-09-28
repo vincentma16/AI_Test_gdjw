@@ -1,0 +1,30 @@
+# 接口自动化运行环境：pytest + requests + allure-pytest
+# 基础镜像 python:3.12-slim 本机已存在（190MB），无需联网拉取
+FROM python:3.12-slim
+
+# 构建期代理：宿主机走代理时填 BUILD_PROXY=http://host.docker.internal:3067
+# 容器内 127.0.0.1 指向容器自身，必须写 host.docker.internal
+ARG BUILD_PROXY=""
+# 可选 pip 镜像源，例如 https://pypi.tuna.tsinghua.edu.cn/simple
+ARG PIP_INDEX_URL=""
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+COPY api-automation/requirements.txt /tmp/requirements.txt
+RUN set -eux; \
+    if [ -n "$BUILD_PROXY" ]; then export http_proxy="$BUILD_PROXY" https_proxy="$BUILD_PROXY"; fi; \
+    PIP_ARGS=""; \
+    if [ -n "$PIP_INDEX_URL" ]; then PIP_ARGS="--index-url $PIP_INDEX_URL"; fi; \
+    pip install --no-cache-dir $PIP_ARGS -r /tmp/requirements.txt; \
+    rm -f /tmp/requirements.txt
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["--env=dev"]

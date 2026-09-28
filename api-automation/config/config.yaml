@@ -1,0 +1,44 @@
+# 多环境配置（占位值，接入被测系统时替换为自己的环境地址）
+#
+# base_url：被测系统的主网关域名
+# services：若系统按服务/微服务拆分域名，在此登记，代码中用 config.service_url("<key>") 取
+#           （单域名系统可整段删掉，不影响任何东西）
+# 覆盖规则：.env 里的 <ENV>_BASE_URL 优先级最高，其次是这里的配置
+# 敏感值：一律写 ${VAR} 占位，真实值放 .env（已 gitignore），不要写在这里
+defaults:
+  timeout: 15
+  retry: 0
+
+environments:
+  dev:
+    base_url: https://dev.example.com
+    timeout: 15
+    services: {}
+      # example-service: https://dev.example.com/example-service
+  sit:
+    base_url: https://sit.example.com
+    timeout: 15
+    services: {}
+  uat:
+    base_url: https://uat.example.com
+    timeout: 15
+    services: {}
+  prod:
+    base_url: https://prod.example.com
+    timeout: 10
+    services: {}
+
+# 鉴权配置的位置（当前为空）。
+# 拿到被测系统的鉴权方式后，在这里补充，再到 common/ 里写对应的 fixture，例如：
+#
+# auth:
+#   login_endpoint: /auth/login
+#   token_jsonpath: "$.result.access_token"
+#   credentials:
+#     username: "${TEST_USERNAME}"
+#     password: "${TEST_PASSWORD}"
+#   header:
+#     name: Authorization
+#     prefix: "Bearer "
+#
+# 约定：endpoint、jsonpath 这类"结构"可以进 git；账号、token、密钥只能写 ${VAR}。

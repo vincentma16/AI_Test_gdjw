@@ -1,0 +1,22 @@
+# 框架自检用例数据（不含任何业务含义，可安全删除）
+# ------------------------------------------------------------------
+# 约定：所有输入值、预期断言值均在此维护，用例只读取并调用 Page Object，
+#       不在代码中硬编码任何数据。
+cases:
+  - id: SAMPLE-UI-001
+    name: 查询-正向
+    feature: 示例模块
+    story: 关键字查询
+    request:
+      keyword: "sample"
+    expect:
+      success_text: "查询成功"
+
+  - id: SAMPLE-UI-002
+    name: 查询-关键字为空校验
+    feature: 示例模块
+    story: 表单校验
+    request:
+      keyword: ""
+    expect:
+      error_text: "请输入关键字"

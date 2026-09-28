@@ -1,0 +1,125 @@
+# AI 测试工作台 —— 一键运行入口
+#
+# 用法：
+#   docker compose build                                  # 构建测试镜像
+#   docker compose run --rm api-tests                     # 跑接口（默认 dev）
+#   docker compose run --rm api-tests --env=sit           # 指定环境
+#   docker compose run --rm ui-tests                      # 跑 UI（默认 local fixture，不联网）
+#   docker compose run --rm ui-tests --env=sit            # 指定环境
+#   docker compose --profile report up -d report-site     # 生成并托管报告 localhost:8080
+#   docker compose down -v                                # 清理
+#
+# 注意：报告必须带上服务名 report-site。直接 `up -d` 会把测试服务一起拉起来跑一遍，
+# 因为 profile 只是"额外启用"，不会限制已存在的服务。
+#
+# 资产边界：
+#   工程目录（api-automation / ui-automation）  -> /app          读写，随 git 走
+#   projects/ templates/ schemas/ config/      -> /assets/**    只读，容器只消费不改写
+#   runs/                                      -> /runs         归档产物，不进 git
+name: ai-test-workbench
+
+services:
+  # ------------------------------------------------------------------
+  # 接口自动化
+  # ------------------------------------------------------------------
+  api-tests:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+      args:
+        BUILD_PROXY: ${BUILD_PROXY:-}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-}
+    image: ai-test/api-tests:latest
+    working_dir: /app
+    env_file:
+      - path: docker/compose.env
+        required: false
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+      PYTEST_ADDOPTS: "-p no:cacheprovider"
+      SUITE: api
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # 工程源码：读写挂载，改代码不用重建镜像
+      - ./api-automation:/app
+      # 归档目录
+      - ./runs:/runs
+      # 创作层资产：只读挂载，容器不能改写需求 / 评审 / 用例
+      - ./projects:/assets/projects:ro
+      - ./templates:/assets/templates:ro
+      - ./schemas:/assets/schemas:ro
+      - ./config:/assets/config:ro
+    command: ["--env=dev"]
+
+  # ------------------------------------------------------------------
+  # UI 自动化
+  # ------------------------------------------------------------------
+  ui-tests:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ui
+      args:
+        BUILD_PROXY: ${BUILD_PROXY:-}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-}
+    image: ai-test/ui-tests:latest
+    working_dir: /app
+    env_file:
+      - path: docker/compose.env
+        required: false
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+      PYTEST_ADDOPTS: "-p no:cacheprovider"
+      SUITE: ui
+      # 登录态写到容器 /tmp，随容器销毁，不落宿主机
+      AUTH_STATE_FILE: /tmp/.auth_state.json
+      # 容器里没有系统 Chrome，置空改用 Playwright 内置 chromium
+      BROWSER_CHANNEL: ""
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./ui-automation:/app
+      - ./runs:/runs
+      - ./projects:/assets/projects:ro
+      - ./templates:/assets/templates:ro
+      - ./schemas:/assets/schemas:ro
+      - ./config:/assets/config:ro
+    # 默认 local：跑本地 HTML fixture，不联网，可用来验证容器本身是否可用
+    command: ["--env=local"]
+
+  # ------------------------------------------------------------------
+  # 报告（report profile，默认不参与 up，避免每次都拉起）
+  # ------------------------------------------------------------------
+  allure-generate:
+    profiles: ["report"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.allure
+      args:
+        BUILD_PROXY: ${BUILD_PROXY:-}
+    image: ai-test/allure:latest
+    restart: "no"
+    environment:
+      ALLURE_RESULTS_DIRS: ${ALLURE_RESULTS_DIRS:-/api/reports/allure-results:/ui/reports/allure-results}
+      ALLURE_REPORT_DIR: /site
+    volumes:
+      - ./api-automation/reports:/api/reports:ro
+      - ./ui-automation/reports:/ui/reports:ro
+      - ./runs:/runs:ro
+      - ./reports/site:/site
+
+  report-site:
+    profiles: ["report"]
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./reports/site:/usr/share/nginx/html:ro
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      allure-generate:
+        condition: service_completed_successfully

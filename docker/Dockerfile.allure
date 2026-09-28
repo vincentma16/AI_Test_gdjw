@@ -1,0 +1,21 @@
+# Allure 报告生成器：宿主机没有 allure CLI，容器里必须自带
+# 复用本机已有的 maven:3.9-eclipse-temurin-17（763MB，自带 JDK 17），无需 apt 装任何东西
+FROM maven:3.9-eclipse-temurin-17
+
+ARG ALLURE_VERSION=2.46.1
+ARG BUILD_PROXY=""
+
+RUN set -eux; \
+    if [ -n "$BUILD_PROXY" ]; then export http_proxy="$BUILD_PROXY" https_proxy="$BUILD_PROXY"; fi; \
+    curl -fsSL -o /tmp/allure.tgz \
+      "https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz"; \
+    mkdir -p /opt/allure; \
+    tar -xzf /tmp/allure.tgz -C /opt/allure --strip-components=1; \
+    rm -f /tmp/allure.tgz; \
+    ln -sf /opt/allure/bin/allure /usr/local/bin/allure; \
+    allure --version
+
+COPY docker/generate-report.sh /usr/local/bin/generate-report.sh
+RUN chmod +x /usr/local/bin/generate-report.sh
+
+ENTRYPOINT ["/usr/local/bin/generate-report.sh"]

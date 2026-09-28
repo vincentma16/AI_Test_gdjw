@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project-config.schema.json",
+  "title": "AI Test Workbench Project Configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "project", "platforms", "sources", "assets", "quality_goals"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "platforms": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["web", "wechat-miniapp", "mobile-app", "desktop", "api"]
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary", "alternatives"],
+      "properties": {
+        "primary": {
+          "type": "string",
+          "enum": ["github-issue", "markdown", "pasted-text"]
+        },
+        "alternatives": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["github-issue", "markdown", "pasted-text"]
+          }
+        }
+      }
+    },
+    "assets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "language", "human_approval_required"],
+      "properties": {
+        "format": {
+          "type": "string",
+          "const": "markdown"
+        },
+        "language": {
+          "type": "string",
+          "default": "zh-CN"
+        },
+        "human_approval_required": {
+          "type": "boolean",
+          "const": true
+        }
+      }
+    },
+    "quality_goals": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["reduce-missed-tests", "shorten-test-cycle", "improve-automation-efficiency"]
+      }
+    }
+  }
+}

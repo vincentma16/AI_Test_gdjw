@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Secrets
+.env
+
+# Allure 报告产物（含按日期归档）
+reports/*
+!reports/.gitkeep
+!reports/open_report.html
+
+# 日志
+logs/
+*.log
+
+# IDE
+.idea/
+.vscode/

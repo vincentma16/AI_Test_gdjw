@@ -1,0 +1,40 @@
+# UI 自动化运行环境：官方 Playwright Python 镜像（浏览器与依赖版本已对齐）
+# 本机通过 mcr.azure.cn 镜像站拉取后，已打同名 alias tag：
+#   docker pull mcr.azure.cn/playwright/python:v1.52.0
+#   docker tag  mcr.azure.cn/playwright/python:v1.52.0 mcr.microsoft.com/playwright/python:v1.52.0
+# 两个源 manifest digest 完全一致（sha256:3997517e...），换机器走官方源语义不变
+ARG PLAYWRIGHT_VERSION=v1.52.0
+FROM mcr.microsoft.com/playwright/python:${PLAYWRIGHT_VERSION}
+
+ARG BUILD_PROXY=""
+ARG PIP_INDEX_URL=""
+# 镜像里的浏览器是 chromium-1169，只与 playwright 1.52.x 匹配。
+# requirements.txt 写的是 >=1.40，pip 会装到最新的 1.63，运行时找不到浏览器可执行文件，
+# 所以这里按镜像版本精确锁定，升级镜像 tag 时同步改这一个值。
+ARG PLAYWRIGHT_PY_VERSION=1.52.0
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    # 登录态不落宿主机：写到容器 /tmp，随容器销毁
+    AUTH_STATE_FILE=/tmp/.auth_state.json
+
+WORKDIR /app
+
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+COPY ui-automation/requirements.txt /tmp/requirements.txt
+RUN set -eux; \
+    if [ -n "$BUILD_PROXY" ]; then export http_proxy="$BUILD_PROXY" https_proxy="$BUILD_PROXY"; fi; \
+    PIP_ARGS=""; \
+    if [ -n "$PIP_INDEX_URL" ]; then PIP_ARGS="--index-url $PIP_INDEX_URL"; fi; \
+    grep -vi '^playwright' /tmp/requirements.txt > /tmp/req-nopw.txt; \
+    pip install --no-cache-dir $PIP_ARGS -r /tmp/req-nopw.txt; \
+    pip install --no-cache-dir $PIP_ARGS "playwright==${PLAYWRIGHT_PY_VERSION}"; \
+    python -c "import playwright, importlib.metadata as m; print('playwright', m.version('playwright'))"; \
+    rm -f /tmp/requirements.txt /tmp/req-nopw.txt
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["--env=local"]

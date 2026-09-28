@@ -1,0 +1,43 @@
+# 多环境配置（占位值，接入被测系统时替换为自己的环境地址）
+# home_url 支持 fixture:// 前缀加载本地 HTML，用于框架自检（不联网即跑通）
+# 覆盖规则：.env 里的 <ENV>_HOME_URL 优先级最高，其次是这里的配置
+defaults:
+  timeout: 30000
+  headless: true
+  slow_mo: 0
+  browser: chromium
+  # channel: 使用系统浏览器（chrome / msedge），留空则用 Playwright 内置浏览器。
+  # 内置浏览器需先运行 playwright install chromium 下载。
+  channel: chrome
+
+environments:
+  # 本地 HTML fixture，用于框架自检（开箱即跑通，不依赖外部系统）
+  local:
+    base_url: ""
+    home_url: fixture://sample.html
+    timeout: 15000
+    headless: true
+
+  dev:
+    base_url: https://dev.example.com
+    home_url: https://dev.example.com/
+    timeout: 60000
+    headless: true
+
+  sit:
+    base_url: https://sit.example.com
+    home_url: https://sit.example.com/
+    timeout: 60000
+    headless: true
+
+  uat:
+    base_url: https://uat.example.com
+    home_url: https://uat.example.com/
+    timeout: 60000
+    headless: true
+
+  prod:
+    base_url: https://prod.example.com
+    home_url: https://prod.example.com/
+    timeout: 60000
+    headless: true

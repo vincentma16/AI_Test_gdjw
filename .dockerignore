@@ -1,0 +1,21 @@
+# 构建上下文瘦身：运行时通过 bind mount 挂载源码，构建期只需要依赖清单与脚本
+.git
+.github
+.venv
+venv
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+
+# 运行产物 / 归档（不进镜像）
+runs/
+**/reports/allure-results/
+**/reports/allure-report/
+**/reports/*/
+reports/
+**/.auth_state.json
+
+# 大体积业务仓库副本
+projects/*/repositories/

@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "requirement-review.schema.json",
+  "title": "需求评审记录",
+  "description": "校验评审记录 front matter / 机器中间表示。Markdown 正文使用中文,本 schema 使用英文枚举,中英文映射见 test-asset-format §中英文状态映射。mode/next_action/status 的语义以 requirement-testability 为准。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "review_round",
+    "mode",
+    "reviewed_at",
+    "reviewer",
+    "source",
+    "status",
+    "evidence",
+    "facts",
+    "scope",
+    "acceptance_criteria",
+    "questions",
+    "risks",
+    "next_action"
+  ],
+  "properties": {
+    "review_round": {
+      "type": "string",
+      "pattern": "^REV-[0-9]{3}$"
+    },
+    "previous_round": {
+      "type": ["string", "null"],
+      "pattern": "^REV-[0-9]{3}$"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["initial-review", "confirmation-registration", "re-review", "status-query"],
+      "description": "对应 agent 工作模式:初次评审/确认登记/复评/状态查询"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reviewer": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["approved", "conditionally-approved", "blocked"],
+      "description": "对应中文:通过/有条件通过/阻塞"
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/evidence" }
+    },
+    "facts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/fact" }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["included", "excluded", "dependencies"],
+      "properties": {
+        "included": { "$ref": "#/$defs/stringList" },
+        "excluded": { "$ref": "#/$defs/stringList" },
+        "dependencies": { "$ref": "#/$defs/stringList" }
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/acceptanceCriterion" }
+    },
+    "questions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/question" }
+    },
+    "confirmations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/confirmation" }
+    },
+    "risks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/risk" }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/assumption" }
+    },
+    "changes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/change" }
+    },
+    "next_action": {
+      "type": "string",
+      "enum": ["awaiting-confirmation", "re-review", "blocked"],
+      "description": "对应中文:等待产品确认/继续复评/阻塞"
+    }
+  },
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "location", "status"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^E-[0-9]{3}$" },
+        "type": { "type": "string" },
+        "location": { "type": "string", "minLength": 1 },
+        "provided_by": { "type": "string", "minLength": 1 },
+        "obtained_at": { "type": "string", "format": "date-time" },
+        "version": { "type": ["string", "null"] },
+        "status": { "type": "string", "enum": ["valid", "superseded", "withdrawn", "unverified"] }
+      }
+    },
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement", "evidence_refs", "status", "first_seen_in_round"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^F-[0-9]{3}$" },
+        "statement": { "type": "string", "minLength": 1 },
+        "evidence_refs": { "$ref": "#/$defs/evidenceRefs" },
+        "status": { "type": "string", "enum": ["active", "superseded", "withdrawn"] },
+        "first_seen_in_round": { "type": "string", "pattern": "^REV-[0-9]{3}$" }
+      }
+    },
+    "acceptanceCriterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement", "fact_refs", "evidence_refs", "status"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^AC-[0-9]{3}$" },
+        "statement": { "type": "string", "minLength": 1 },
+        "fact_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^F-[0-9]{3}$" }
+        },
+        "evidence_refs": { "$ref": "#/$defs/evidenceRefs" },
+        "status": { "type": "string", "enum": ["active", "superseded", "withdrawn"] }
+      }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement", "priority", "basis", "impact", "owner", "status", "raised_in_round", "last_updated_in_round"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^Q-[0-9]{3}$" },
+        "statement": { "type": "string", "minLength": 1 },
+        "priority": { "type": "string", "enum": ["P0", "P1", "P2"] },
+        "basis": { "type": "string", "minLength": 1 },
+        "impact": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["pending", "answered-awaiting-review", "needs-clarification", "closed", "cancelled"], "description": "对应中文:待确认/已答复待复评/需继续确认/已关闭/已取消;映射见 test-asset-format §中英文状态映射" },
+        "raised_in_round": { "type": "string", "pattern": "^REV-[0-9]{3}$" },
+        "last_updated_in_round": { "type": "string", "pattern": "^REV-[0-9]{3}$" },
+        "confirmation_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^C-[0-9]{3}$" }
+        }
+      }
+    },
+    "confirmation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "question_refs", "answer", "provided_by", "role", "answered_at", "evidence_ref", "sufficiency"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^C-[0-9]{3}$" },
+        "question_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^Q-[0-9]{3}$" }
+        },
+        "answer": { "type": "string", "minLength": 1 },
+        "provided_by": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "answered_at": { "type": "string", "format": "date-time" },
+        "evidence_ref": { "type": "string", "pattern": "^E-[0-9]{3}$" },
+        "sufficiency": { "type": "string", "enum": ["sufficient", "insufficient", "conflicting"], "description": "对应中文:充分/不充分/冲突" },
+        "reviewed_in_round": { "type": ["string", "null"], "pattern": "^REV-[0-9]{3}$" }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement", "level", "basis", "status"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^R-[0-9]{3}$" },
+        "statement": { "type": "string", "minLength": 1 },
+        "level": { "type": "string", "enum": ["high", "medium", "low"] },
+        "basis": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["open", "controlled", "closed"] }
+      }
+    },
+    "assumption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement", "reason", "invalidated_by", "status"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^A-[0-9]{3}$" },
+        "statement": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "invalidated_by": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["active", "confirmed", "invalidated", "withdrawn"] }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "target_ref", "summary", "basis", "impact", "round"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^CHG-[0-9]{3}$" },
+        "type": { "type": "string", "enum": ["added", "modified", "deprecated", "status-changed"] },
+        "target_ref": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 },
+        "basis": { "type": "string", "minLength": 1 },
+        "impact": { "type": "string", "minLength": 1 },
+        "round": { "type": "string", "pattern": "^REV-[0-9]{3}$" }
+      }
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^E-[0-9]{3}(?:#.+)?$" }
+    }
+  }
+}
