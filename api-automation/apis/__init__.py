@@ -6,5 +6,5 @@
 约定：
   - 用例只调用本层函数，不拼 URL、不直接组装请求体
   - 接口路径与默认参数集中在此，接口变更只改一处
-  - 参考实现可复制 api-automation-template/apis/example/example_api.py
+  - 参考实现可复制 apis/example/example_api.py
 """

@@ -65,10 +65,10 @@ docker compose run --rm api-tests --env=sit
 2. **建接口层**：新建 `apis/<模块>/<模块>_api.py`，一个接口一个函数，返回原始 `Response`
 3. **写用例**：新建 `testcases/<模块>/test_<模块>.py`，只调用 apis 层函数，用 fixture `api` 发请求
 4. **需要鉴权**：在 `config/config.yaml` 的 `auth` 段按注释补充配置，参考
-   `api-automation-template/common/auth.py` 写一个登录函数，并在 conftest 做成 session 级 fixture
+   `common/auth.py` 写一个登录函数，并在 conftest 做成 session 级 fixture
 
-参照 **api-automation-template**：那里有 `apis/example/`、`testcases/example/`
-和一整套可直接复制的写法。
+工程内自带一套可直接复制的写法示范：`apis/example/`、`testcases/example/`
+（未接入真实环境时自动 skip，不影响 CI）。
 
 ## 约定
 
@@ -76,4 +76,4 @@ docker compose run --rm api-tests --env=sit
 - **断言用 common.assert_util**：`assert_status_code` / `assert_jsonpath`，不要在用例里裸 `assert`
 - **取响应字段用 common.extractor**：`extract_by_jsonpath`
 - **用例之间不互相依赖**：数据自行准备，顺序无关
-- 更细的工程纪律见 `../api-automation-template/框架规则.md`
+- 更细的工程纪律见 [`../docs/接口自动化框架规则.md`](../docs/接口自动化框架规则.md)

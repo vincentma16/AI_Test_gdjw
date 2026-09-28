@@ -16,7 +16,6 @@ evaluations/      可复用能力的验收场景与质量清单
 docs/             工作台架构和使用说明
 api-automation/   接口自动化工程（pytest + requests）— 空框架，未接入被测系统
 ui-automation/    UI 自动化工程（pytest + playwright）— 仅留 sample 自检样例
-api-automation-template/  接口自动化脚手架（带 example 参考实现，复制到新项目用）
 docker/           Docker 构建与运行脚本
 runs/             测试运行归档（gitignored）
 ```
