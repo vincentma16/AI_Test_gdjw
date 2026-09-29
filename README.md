@@ -32,31 +32,52 @@ runs/             测试运行归档（gitignored）
 cp docker/compose.env.example docker/compose.env   # 可选，按需填代理与账号
 docker compose build                               # 构建镜像（首次）
 
-docker compose run --rm api-tests                  # 跑接口（默认 dev）
-docker compose run --rm api-tests --env=sit        # 指定环境
-docker compose run --rm api-tests -m smoke         # 只跑冒烟
+# 推荐入口：自动分配运行序号 + 每次运行独立的 compose 项目名（可并发）
+bash docker/run-tests.sh --suite api               # 接口（默认 dev）
+bash docker/run-tests.sh --suite ui                # UI（默认 local fixture，不联网）
+bash docker/run-tests.sh --suite all               # 两个套件一次跑完，共用一个序号
+bash docker/run-tests.sh --suite api --env sit     # 指定环境
+bash docker/run-tests.sh --suite api --marker smoke
 
-docker compose run --rm ui-tests                   # 跑 UI（默认 local fixture，不联网）
-docker compose run --rm ui-tests --env=sit         # 指定环境
-
-docker compose --profile report up -d report-site  # 生成报告并起报告站
-# 浏览器打开 http://localhost:8080
+bash docker/run-report.sh --seq 001                # 为该次运行生成报告
+docker compose --profile report up -d report-site  # 起报告站
+# 浏览器打开 http://127.0.0.1:8080
 
 docker compose down -v                             # 清理
 ```
 
-> 报告命令必须显式写服务名 `report-site`：profile 只是"额外启用"，不会限制已存在的
-> 服务，直接 `up -d` 会把测试服务也拉起来跑一遍。
+> 也可以直接 `docker compose run --rm api-tests`，但那样不会做并发隔离和运行序号协调，
+> 多人/多窗口同时跑会撞容器名。除非明确要自己控制，否则用 `run-tests.sh`。
 
-每次运行的结果归档到 `runs/<日期>/<序号>/<套件>/`，含 `allure-results/` 与
-`summary.json`（时间、耗时、退出码、命令）。序号当日递增，不会覆盖。
+报告命令必须显式写服务名 `report-site`：profile 只是"额外启用"，不会限制已存在的
+服务，直接 `up -d` 会把测试服务也拉起来跑一遍。
 
-两个注意点：
+### 运行与归档
 
-- `docker/entrypoint.sh`（归档逻辑）是**烤进镜像**的，改完要 `docker compose build` 才生效；
-  工程内的用例代码是挂载进去的，改完直接生效，不用重建
-- `api-automation` 的 `testcases/` 为空时，pytest 退出码为 5，entrypoint 会额外打印
-  "未收集到任何用例（非容器故障）"，属正常状态
+每次运行落到 `runs/<日期>/<序号>/` 下，一个套件一个子目录：
+
+```text
+runs/2026-09-29/004/
+├── api/allure-results/       # 原始结果
+├── api/summary.json          # 时间、耗时、退出码、命令
+├── ui/allure-results/
+├── ui/summary.json
+└── report/                   # 该次运行的 Allure 报告（run-report.sh 生成）
+```
+
+**每次运行的报告是独立的，不会互相覆盖**。报告站直接托管 `runs/`，
+访问路径为 `http://127.0.0.1:8080/<日期>/<序号>/report/index.html`；
+根目录 `http://127.0.0.1:8080/` 是所有运行的导航页。
+
+### 三条硬约束
+
+1. **`docker/entrypoint.sh` 与 `docker/generate-report.sh` 是烤进镜像的**，
+   改完必须 `docker compose build`；工程内的用例代码是挂载进去的，改完即时生效
+2. **参数必须走白名单**。`run-tests.sh` 只接受 `--suite` / `--env` / `--marker`，
+   取值经枚举或正则校验，命令按数组构造不经 `eval`，外部输入无法拼出额外 shell 语法。
+   后续接可视化平台时，平台层要做同样的校验，不能把用户输入直接丢给 `docker compose`
+3. **报告站只绑 127.0.0.1**（见 compose 的 `ports`）。能触发 `docker run` 的入口
+   等同于具备本机容器控制权，平台化时必须先加鉴权，不要把 8080 直接暴露到局域网
 
 ### 资产边界
 
@@ -65,7 +86,7 @@ docker compose down -v                             # 清理
 | `api-automation/`、`ui-automation/` | `/app` | 读写 | 代码与自动化用例 md，随 git 走 |
 | `projects/`、`templates/`、`schemas/`、`config/` | `/assets/**` | **只读** | 需求 / 评审 / 设计态用例，容器只消费不改写 |
 | 工程内 `reports/allure-results/` | `/app/reports/allure-results` | 读写 | 最新一次结果，已 gitignore |
-| `runs/`、`reports/site/` | `/runs`、`/site` | 读写 | 归档与报告站，已 gitignore |
+| `runs/` | `/runs` | 读写 | 归档 + 每次运行的报告 + 导航页，已 gitignore |
 
 登录态 `.auth_state.json` 默认写到容器 `/tmp`，随容器销毁，不落宿主机（需要留痕时
 设置 `KEEP_AUTH=1`）。详细设计见 [docs/docker-deployment-plan.md](docs/docker-deployment-plan.md)。

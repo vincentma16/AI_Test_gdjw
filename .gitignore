@@ -88,9 +88,7 @@ projects/*/repositories/
 # ============================================================
 # Docker 运行产物
 # ============================================================
-# 历史归档：runs/<日期>/<序号>/<套件>/allure-results + summary.json
+# 历史归档 + 每次运行的报告 + 导航页：runs/<日期>/<序号>/{套件,report}
 runs/
-# 报告站静态站点（由 allure-generate 生成）
-reports/site/
 # compose 运行变量（可能含真实账号，绝不提交）
 docker/compose.env

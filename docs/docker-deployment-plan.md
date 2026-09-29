@@ -318,3 +318,50 @@ README 补充「Docker 部署」章节。
 
 镜像体积：`ai-test/api-tests` 约 240MB、`ai-test/ui-tests` 3.9GB（官方 Playwright 镜像本体就 3.56GB）、
 `ai-test/allure` 约 810MB（maven 镜像 763MB + allure CLI）。
+
+## 13. 平台化前置改造（2026-09-29 完成）
+
+目标从"一个人在本机敲命令"升级为"可被可视化平台驱动、支持多人同时使用"。
+原实现里藏着三个假设，逐个拆掉：
+
+| # | 问题 | 原行为 | 改法 |
+|---|---|---|---|
+| 1 | 报告互相覆盖 | 所有报告都生成到同一个 `reports/site/`，后一次冲掉前一次 | 报告按运行独立输出到 `runs/<日期>/<序号>/report/`；`generate-report.sh` 支持 `RUN_DIR`，不传则自动定位最新一次；nginx 改托管 `runs/` |
+| 2 | 并发冲突 | compose 项目名写死 `ai-test-workbench`，两个 `run --rm` 同时执行会撞容器名 | `name: ${COMPOSE_PROJECT_NAME:-ai-test-workbench}`；新增 `run-tests.sh` 负责原子分配序号（`mkdir` 竞争）并按 `<日期>-<序号>-<套件>-<PID>` 隔离项目名 |
+| 3 | 开放性 RCE 面 | 任何人能把任意字符串接进 `docker compose run`；报告站 `0.0.0.0:8080` | `run-tests.sh` 只接受 `--suite/--env/--marker`，取值走枚举或正则、命令按数组构造不经 `eval`；报告站改绑 `127.0.0.1:8080` |
+
+新增文件：
+
+```text
+docker/run-tests.sh      # 推荐入口：白名单 + 并发隔离 + 自动序号
+docker/run-report.sh     # 为指定运行出报告 + 重建 runs/index.html 导航页
+```
+
+实跑验证记录：
+
+```
+两条命令并发执行 run-tests.sh --suite api     → 分别落在 001 / 002，均退出码 0
+run-tests.sh --suite all                      → api(dev) + ui(local) 共用 004，均通过
+run-report.sh --seq 003 与 --seq 004          → 两份报告并存，互不覆盖
+HTTP 200：/ 与 /2026-09-29/{003,004}/report/index.html
+端口绑定：127.0.0.1:8080->80
+注入尝试 5 种（分号 / 命令替换 / 混入 compose 参数 / 未知参数）→ 全部拒绝，未落地任何文件
+```
+
+### 平台层接手时必须做的事
+
+`run-tests.sh` 的校验是**给命令行用户兜底**的，不是给平台用的防线。平台化时：
+
+- **平台自己再校验一遍**，取值来源必须是下拉/枚举，不能是自由文本输入框
+- **先加鉴权**再暴露到局域网。能触发 `docker run` 的入口 ≈ 具备本机容器控制权
+- 报告站保持在 127.0.0.1，由平台侧鉴权后反向代理，不要把 8080 直接对外开放
+- 平台只允许调用 `run-tests.sh` / `run-report.sh` 这类固定入口，不拼命令字符串
+
+### 过程中踩到的坑
+
+| 现象 | 原因 | 修法 |
+|---|---|---|
+| 改完 `generate-report.sh` 立刻跑，仍然输出占位页 | 它是 COPY 进镜像的，`run --rm` 用的是旧版 | `docker compose --profile report build` 后重跑（同 §12 第一条） |
+| nginx 起不来，`pcre2_compile() failed: missing closing parenthesis in "^/([0-9]"` | nginx 把正则里的 `{4}` 当配置块起始花括号 | `location` 正则必须加引号：`location ~ "^/..."` |
+| `run-tests.sh --suite all` 的 api 退出码 4（pytest usage error） | 我给 api 套用了 ui 的默认环境 `local`，而 api 的 conftest 只接受 dev/uat/sit/prod | 默认值改为按套件决定（api=dev，ui=local），显式 `--env` 时统一使用 |
+| 导航页里退出码/耗时全是空 | 取值依赖宿主机 python | 改用 `sed` 提取 summary.json，去掉 python 依赖 |
